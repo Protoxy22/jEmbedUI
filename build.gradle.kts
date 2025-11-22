@@ -24,16 +24,23 @@ dependencies {
     implementation("org.lwjgl:lwjgl-opengl:$lwjglVersion")
     implementation("org.lwjgl:lwjgl-opengles:$lwjglVersion")
     implementation("org.lwjgl:lwjgl-sdl:$lwjglVersion")
+    implementation("org.lwjgl:lwjgl-nanovg:${lwjglVersion}")
+    implementation("org.lwjgl:lwjgl-stb:${lwjglVersion}")
 
     runtimeOnly("org.lwjgl:lwjgl:$lwjglVersion:natives-linux")
     runtimeOnly("org.lwjgl:lwjgl-opengl:$lwjglVersion:natives-linux")
     runtimeOnly("org.lwjgl:lwjgl-opengles:$lwjglVersion:natives-linux")
     runtimeOnly("org.lwjgl:lwjgl-sdl:$lwjglVersion:natives-linux")
+    runtimeOnly("org.lwjgl:lwjgl-nanovg:$lwjglVersion:natives-linux")
+    runtimeOnly("org.lwjgl:lwjgl-stb:$lwjglVersion:natives-linux")
+
 
     runtimeOnly("org.lwjgl:lwjgl:$lwjglVersion:natives-linux-arm64")
     runtimeOnly("org.lwjgl:lwjgl-opengl:$lwjglVersion:natives-linux-arm64")
     runtimeOnly("org.lwjgl:lwjgl-opengles:$lwjglVersion:natives-linux-arm64")
     runtimeOnly("org.lwjgl:lwjgl-sdl:$lwjglVersion:natives-linux-arm64")
+    runtimeOnly("org.lwjgl:lwjgl-nanovg:$lwjglVersion:natives-linux-arm64")
+    runtimeOnly("org.lwjgl:lwjgl-stb:$lwjglVersion:natives-linux-arm64")
 }
 
 application {
