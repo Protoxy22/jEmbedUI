@@ -55,8 +55,8 @@ public class UIText extends UIBaseElement {
         
         renderer.drawText(getAbsoluteX() + style.getPaddingLeft(), 
                          getAbsoluteY() + style.getPaddingTop() + fontSize, 
-                         text, fontSize, color);
-        
+                         text, "default", fontSize, color, align);
+
         markClean();
     }
 }

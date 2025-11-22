@@ -127,12 +127,13 @@ public class UIButton extends UIBaseElement {
         float fontSize = style.getFontSize();
         Color textColor = enabled ? style.getForegroundColor() : new Color(0.4f, 0.4f, 0.4f);
         
-        float[] textSize = renderer.measureText(label, fontSize);
-        float textX = getAbsoluteX() + (width - textSize[0]) / 2;
-        float textY = getAbsoluteY() + (height + textSize[1]) / 2;
-        
-        renderer.drawText(textX, textY, label, fontSize, textColor);
-        
+        // Center the text
+        float textX = getAbsoluteX() + width / 2;
+        float textY = getAbsoluteY() + height / 2;
+
+        renderer.drawText(textX, textY, label, "default", fontSize, textColor,
+                         NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
+
         markClean();
     }
 }

@@ -58,6 +58,13 @@ public class UIContext {
     // Focus management
     public void setFocus(UIBaseElement element) {
         if (focusedElement != element) {
+            // Notify previous focused element that it lost focus
+            if (focusedElement != null) {
+                // Check if it's a text field and call loseFocus
+                if (focusedElement instanceof com.jembedui.components.input.UITextField) {
+                    ((com.jembedui.components.input.UITextField) focusedElement).loseFocus();
+                }
+            }
             focusedElement = element;
         }
     }
@@ -99,6 +106,9 @@ public class UIContext {
                 setFocus(element);
                 MouseEvent downEvent = new MouseEvent(element, MouseEvent.MouseEventType.MOUSE_DOWN, x, y, button);
                 propagateEvent(element, downEvent);
+            } else {
+                // Clicked on empty space - clear focus
+                setFocus(null);
             }
         } else {
             if (element != null) {

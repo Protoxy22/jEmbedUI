@@ -2,6 +2,7 @@
 .gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
+.gradle
 
 # IDE
 .idea/
@@ -18,7 +19,6 @@ Thumbs.db
 # Java
 *.class
 *.log
-*.jar
 *.war
 *.ear
 hs_err_pid*

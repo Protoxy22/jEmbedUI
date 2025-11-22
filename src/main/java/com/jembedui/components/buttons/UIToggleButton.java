@@ -62,11 +62,11 @@ public class UIToggleButton extends UIButton {
             float fontSize = getStyle().getFontSize();
             Color textColor = Color.WHITE;
             
-            float[] textSize = renderer.measureText(getLabel(), fontSize);
-            float textX = getAbsoluteX() + (getWidth() - textSize[0]) / 2;
-            float textY = getAbsoluteY() + (getHeight() + textSize[1]) / 2;
-            
-            renderer.drawText(textX, textY, getLabel(), fontSize, textColor);
+            float textX = getAbsoluteX() + getWidth() / 2;
+            float textY = getAbsoluteY() + getHeight() / 2;
+
+            renderer.drawText(textX, textY, getLabel(), "default", fontSize, textColor,
+                             org.lwjgl.nanovg.NanoVG.NVG_ALIGN_CENTER | org.lwjgl.nanovg.NanoVG.NVG_ALIGN_MIDDLE);
             markClean();
         } else {
             super.render(renderer);

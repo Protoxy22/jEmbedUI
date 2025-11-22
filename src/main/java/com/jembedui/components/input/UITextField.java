@@ -19,6 +19,11 @@ public class UITextField extends UIBaseElement {
     private String placeholder = "";
     private Runnable onChangeHandler;
     
+    // Cursor blinking
+    private double cursorBlinkTime = 0.0;
+    private static final double CURSOR_BLINK_INTERVAL = 1; // Blink every 1000ms
+    private boolean cursorVisible = true;
+
     public UITextField() {
         super();
         setupEventHandlers();
@@ -38,15 +43,35 @@ public class UITextField extends UIBaseElement {
     
     private void handleMouseEvent(MouseEvent event) {
         if (event.getEventType() == MouseEvent.MouseEventType.MOUSE_DOWN) {
-            focused = true;
+            // Only gain focus if clicking inside this text field
+            if (!focused) {
+                focused = true;
+                cursorBlinkTime = 0.0;
+                cursorVisible = true;
+                markDirty();
+            }
+        }
+    }
+
+    public void loseFocus() {
+        if (focused) {
+            focused = false;
             markDirty();
         }
     }
-    
+
+    public boolean isFocused() {
+        return focused;
+    }
+
     private void handleKeyboardEvent(KeyboardEvent event) {
         if (!focused || !enabled) return;
         if (event.getEventType() != KeyboardEvent.KeyEventType.KEY_DOWN) return;
         
+        // Reset cursor blink when typing
+        cursorBlinkTime = 0.0;
+        cursorVisible = true;
+
         int key = event.getKey();
         
         if (key == GLFW_KEY_BACKSPACE && cursorPosition > 0) {
@@ -107,6 +132,21 @@ public class UITextField extends UIBaseElement {
     }
     
     @Override
+    public void update(float deltaTime) {
+        super.update(deltaTime);
+
+        // Update cursor blinking when focused
+        if (focused) {
+            cursorBlinkTime += deltaTime;
+            if (cursorBlinkTime >= CURSOR_BLINK_INTERVAL) {
+                cursorBlinkTime = 0.0;
+                cursorVisible = !cursorVisible;
+                markDirty();
+            }
+        }
+    }
+
+    @Override
     public void render(NVGRenderer renderer) {
         if (!visible) return;
         
@@ -125,16 +165,18 @@ public class UITextField extends UIBaseElement {
         // Draw text or placeholder
         float fontSize = style.getFontSize();
         float textX = ax + 5;
-        float textY = ay + (height + fontSize) / 2;
-        
+        float textY = ay + height / 2;
+
         if (text.length() > 0) {
-            renderer.drawText(textX, textY, text.toString(), fontSize, Color.BLACK);
+            renderer.drawText(textX, textY, text.toString(), "default", fontSize, Color.BLACK,
+                             org.lwjgl.nanovg.NanoVG.NVG_ALIGN_LEFT | org.lwjgl.nanovg.NanoVG.NVG_ALIGN_MIDDLE);
         } else if (!placeholder.isEmpty()) {
-            renderer.drawText(textX, textY, placeholder, fontSize, new Color(0.6f, 0.6f, 0.6f));
+            renderer.drawText(textX, textY, placeholder, "default", fontSize, new Color(0.6f, 0.6f, 0.6f),
+                             org.lwjgl.nanovg.NanoVG.NVG_ALIGN_LEFT | org.lwjgl.nanovg.NanoVG.NVG_ALIGN_MIDDLE);
         }
         
-        // Draw cursor if focused
-        if (focused) {
+        // Draw cursor if focused and visible (blinking)
+        if (focused && cursorVisible) {
             String beforeCursor = text.substring(0, cursorPosition);
             float[] cursorOffset = renderer.measureText(beforeCursor, fontSize);
             renderer.drawLine(textX + cursorOffset[0], ay + 5, 

@@ -3,7 +3,6 @@ package com.jembedui.examples;
 import com.jembedui.components.UIPanel;
 import com.jembedui.components.buttons.*;
 import com.jembedui.components.display.UILabel;
-import com.jembedui.components.display.UIText;
 import com.jembedui.components.input.UITextField;
 import com.jembedui.components.navigation.UIMenu;
 import com.jembedui.components.navigation.UIMenuItem;
@@ -13,15 +12,24 @@ import com.jembedui.core.UIContext;
 import com.jembedui.events.MouseEvent;
 import com.jembedui.layout.*;
 import com.jembedui.style.Color;
-import org.lwjgl.glfw.*;
-import org.lwjgl.opengl.GL;
+import org.lwjgl.opengles.GLES;
+import org.lwjgl.sdl.SDL_Event;
 import org.lwjgl.system.MemoryStack;
 
-import java.nio.IntBuffer;
+import java.nio.FloatBuffer;
 
-import static org.lwjgl.glfw.GLFW.*;
-import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengles.GLES20.*;
+import static org.lwjgl.sdl.SDLError.SDL_GetError;
+import static org.lwjgl.sdl.SDLEvents.*;
+import static org.lwjgl.sdl.SDLHints.SDL_HINT_VIDEO_DRIVER;
+import static org.lwjgl.sdl.SDLHints.SDL_SetHint;
+import static org.lwjgl.sdl.SDLInit.*;
+import static org.lwjgl.sdl.SDLKeycode.*;
+import static org.lwjgl.sdl.SDLMouse.*;
+import static org.lwjgl.sdl.SDLTimer.SDL_Delay;
+import static org.lwjgl.sdl.SDLVideo.*;
 import static org.lwjgl.system.MemoryUtil.NULL;
+import static org.lwjgl.system.MemoryUtil.memUTF8;
 
 /**
  * Comprehensive example application demonstrating all UI components.
@@ -29,10 +37,12 @@ import static org.lwjgl.system.MemoryUtil.NULL;
 public class ComprehensiveExample {
     
     private long window;
+    private long glContext;
     private UIContext uiContext;
-    private int windowWidth = 1024;
-    private int windowHeight = 768;
-    
+    private int windowWidth = 800;
+    private int windowHeight = 480;
+    private boolean running = true;
+
     public static void main(String[] args) {
         new ComprehensiveExample().run();
     }
@@ -45,59 +55,74 @@ public class ComprehensiveExample {
     }
     
     private void init() {
-        // Initialize GLFW
-        if (!glfwInit()) {
-            throw new IllegalStateException("Unable to initialize GLFW");
+        // Detect ARM architecture (likely Raspberry Pi or similar embedded device)
+        String osArch = System.getProperty("os.arch").toLowerCase();
+        String osName = System.getProperty("os.name").toLowerCase();
+        boolean isARM = osArch.contains("arm") || osArch.contains("aarch");
+        boolean isLinux = osName.contains("linux");
+
+        // Use KMSDRM on ARM Linux systems (like Raspberry Pi)
+        if (isARM && isLinux) {
+            System.out.println("ARM architecture detected (" + osArch + "), using KMSDRM video driver");
+            SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "kmsdrm");
+        } else {
+            System.out.println("Non-ARM architecture detected (" + osArch + "), using default video driver");
         }
-        
-        // Configure GLFW
-        glfwDefaultWindowHints();
-        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
-        
-        // Create the window
-        window = glfwCreateWindow(windowWidth, windowHeight, "jEmbedUI - Comprehensive Example", NULL, NULL);
+
+        if (!SDL_Init(SDL_INIT_VIDEO)) {
+            throw new IllegalStateException("SDL_Init failed: " + SDL_GetError());
+        }
+
+        // Configure OpenGL context - using OpenGL 3.3 Core for NanoVG
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+
+
+        // Create window
+        window = SDL_CreateWindow(
+                "jEmbedUI - Comprehensive Example",
+                windowWidth,
+                windowHeight,
+                SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
+        );
         if (window == NULL) {
-            glfwTerminate();
-            throw new RuntimeException("Failed to create the GLFW window");
+            SDL_Quit();
+            throw new IllegalStateException("SDL_CreateWindow failed: " + SDL_GetError());
         }
-        
-        // Setup callbacks
-        glfwSetKeyCallback(window, this::keyCallback);
-        glfwSetMouseButtonCallback(window, this::mouseButtonCallback);
-        glfwSetCursorPosCallback(window, this::cursorPosCallback);
-        glfwSetScrollCallback(window, this::scrollCallback);
-        glfwSetCharCallback(window, this::charCallback);
-        glfwSetFramebufferSizeCallback(window, this::framebufferSizeCallback);
-        
-        // Center window
-        try (MemoryStack stack = MemoryStack.stackPush()) {
-            IntBuffer pWidth = stack.mallocInt(1);
-            IntBuffer pHeight = stack.mallocInt(1);
-            glfwGetWindowSize(window, pWidth, pHeight);
-            GLFWVidMode vidmode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-            glfwSetWindowPos(window, 
-                (vidmode.width() - pWidth.get(0)) / 2,
-                (vidmode.height() - pHeight.get(0)) / 2
-            );
+
+        // SDL3 + Wayland: explicitly show it
+        SDL_ShowWindow(window);
+
+        // Create OpenGL context
+        glContext = SDL_GL_CreateContext(window);
+        if (glContext == NULL) {
+            SDL_DestroyWindow(window);
+            SDL_Quit();
+            throw new IllegalStateException("SDL_GL_CreateContext failed: " + SDL_GetError());
         }
-        
-        // Make the OpenGL context current
-        glfwMakeContextCurrent(window);
-        glfwSwapInterval(1);  // Enable v-sync
-        glfwShowWindow(window);
-        
-        // Initialize OpenGL bindings
-        GL.createCapabilities();
-        
-        System.out.println("OpenGL Version: " + glGetString(GL_VERSION));
-        System.out.println("OpenGL Vendor: " + glGetString(GL_VENDOR));
-        System.out.println("OpenGL Renderer: " + glGetString(GL_RENDERER));
-        
+
+        // Make context current
+        if (!SDL_GL_MakeCurrent(window, glContext)) {
+            String err = SDL_GetError();
+            SDL_GL_DestroyContext(glContext);
+            SDL_DestroyWindow(window);
+            SDL_Quit();
+            throw new IllegalStateException("SDL_GL_MakeCurrent failed: " + err);
+        }
+
+        // Enable vsync
+        SDL_GL_SetSwapInterval(1);
+
+        // Initialize OpenGL ES bindings
+        GLES.createCapabilities();
+
+        System.out.println("Video driver: " + SDL_GetCurrentVideoDriver());
+        System.out.println("GL Version: " + glGetString(GL_VERSION));
+        System.out.println("GL Vendor: " + glGetString(GL_VENDOR));
+        System.out.println("GL Renderer: " + glGetString(GL_RENDERER));
+
         // Create UI context
         uiContext = new UIContext(windowWidth, windowHeight, 1.0f);
     }
@@ -115,7 +140,7 @@ public class ComprehensiveExample {
         fileMenu.addDropdownItem("New", () -> System.out.println("New clicked"));
         fileMenu.addDropdownItem("Open", () -> System.out.println("Open clicked"));
         fileMenu.addDropdownItem("Save", () -> System.out.println("Save clicked"));
-        fileMenu.addDropdownItem("Exit", () -> glfwSetWindowShouldClose(window, true));
+        fileMenu.addDropdownItem("Exit", () -> running = false);
         menuBar.addChild(fileMenu);
         
         UIMenuItem editMenu = new UIMenuItem("Edit");
@@ -137,7 +162,7 @@ public class ComprehensiveExample {
         // Tab 2: Sliders & Progress
         UIContainer slidersTab = createSlidersTab();
         tabView.addTab("Sliders", slidersTab);
-        
+
         // Tab 3: Input Controls
         UIContainer inputTab = createInputTab();
         tabView.addTab("Input", inputTab);
@@ -213,34 +238,38 @@ public class ComprehensiveExample {
         checkLabel.setHeight(25);
         panel.addChild(checkLabel);
         
-        UIPanel checkRow = new UIPanel();
-        checkRow.setHeight(30);
-        checkRow.setLayoutManager(new HorizontalLayout(15));
-        checkRow.getStyle().setBackgroundColor(Color.TRANSPARENT);
-        
+        // Create checkboxes in vertical layout for better alignment
+        UIPanel checkContainer = new UIPanel();
+        checkContainer.setHeight(80);
+        checkContainer.setLayoutManager(new VerticalLayout(10));
+        checkContainer.getStyle().setBackgroundColor(Color.TRANSPARENT);
+
         UICheckbox check1 = new UICheckbox("Option 1");
+        check1.setHeight(20);
         check1.setOnClick(() -> {
             check1.setChecked(!check1.isChecked());
             System.out.println("Checkbox 1: " + check1.isChecked());
         });
-        checkRow.addChild(check1);
-        
+        checkContainer.addChild(check1);
+
         UICheckbox check2 = new UICheckbox("Option 2");
+        check2.setHeight(20);
         check2.setOnClick(() -> {
             check2.setChecked(!check2.isChecked());
             System.out.println("Checkbox 2: " + check2.isChecked());
         });
-        checkRow.addChild(check2);
-        
+        checkContainer.addChild(check2);
+
         UICheckbox check3 = new UICheckbox("Option 3");
+        check3.setHeight(20);
         check3.setOnClick(() -> {
             check3.setChecked(!check3.isChecked());
             System.out.println("Checkbox 3: " + check3.isChecked());
         });
-        checkRow.addChild(check3);
-        
-        panel.addChild(checkRow);
-        
+        checkContainer.addChild(check3);
+
+        panel.addChild(checkContainer);
+
         return panel;
     }
     
@@ -346,77 +375,110 @@ public class ComprehensiveExample {
     }
     
     private void loop() {
-        while (!glfwWindowShouldClose(window)) {
+        SDL_Event event = SDL_Event.calloc();
+
+        while (running) {
+            // Poll events
+            while (SDL_PollEvent(event)) {
+                handleEvent(event);
+            }
+
             // Clear
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glViewport(0, 0, windowWidth, windowHeight);
             glClearColor(0.15f, 0.15f, 0.18f, 1.0f);
-            
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
             // Update UI
             uiContext.update(0.016f);  // ~60 FPS
             
             // Render UI
             uiContext.render();
             
-            // Swap buffers and poll events
-            glfwSwapBuffers(window);
-            glfwPollEvents();
+            // Swap buffers
+            SDL_GL_SwapWindow(window);
+            SDL_Delay(16);
         }
+
+        event.free();
     }
     
     private void cleanup() {
         uiContext.cleanup();
-        glfwDestroyWindow(window);
-        glfwTerminate();
+        SDL_GL_DestroyContext(glContext);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
     }
     
-    // GLFW Callbacks
-    
-    private void keyCallback(long window, int key, int scancode, int action, int mods) {
-        if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
-            glfwSetWindowShouldClose(window, true);
+    // SDL Event Handler
+
+    private void handleEvent(SDL_Event event) {
+        int eventType = event.type();
+
+        switch (eventType) {
+            case SDL_EVENT_QUIT -> running = false;
+
+            case SDL_EVENT_KEY_DOWN, SDL_EVENT_KEY_UP -> {
+                int scancode = event.key().scancode();
+                int keycode = event.key().key();
+                int mods = event.key().mod();
+                boolean pressed = (eventType == SDL_EVENT_KEY_DOWN);
+
+                // Handle ESC key
+                if (keycode == SDLK_ESCAPE && !pressed) {
+                    running = false;
+                }
+
+                uiContext.handleKeyEvent(keycode, scancode, mods, pressed, '\0');
+            }
+
+            case SDL_EVENT_TEXT_INPUT -> {
+                String text = memUTF8(event.text().text());
+                if (text != null && !text.isEmpty()) {
+                    uiContext.handleKeyEvent(0, 0, 0, true, text.charAt(0));
+                }
+            }
+
+            case SDL_EVENT_MOUSE_BUTTON_DOWN, SDL_EVENT_MOUSE_BUTTON_UP -> {
+                float x = event.button().x();
+                float y = event.button().y();
+                int button = event.button().button();
+                boolean pressed = (eventType == SDL_EVENT_MOUSE_BUTTON_DOWN);
+
+                MouseEvent.MouseButton btn = switch (button) {
+                    case SDL_BUTTON_LEFT -> MouseEvent.MouseButton.LEFT;
+                    case SDL_BUTTON_RIGHT -> MouseEvent.MouseButton.RIGHT;
+                    case SDL_BUTTON_MIDDLE -> MouseEvent.MouseButton.MIDDLE;
+                    default -> MouseEvent.MouseButton.NONE;
+                };
+
+                uiContext.handleMouseButton(x, y, btn, pressed);
+            }
+
+            case SDL_EVENT_MOUSE_MOTION -> {
+                float x = event.motion().x();
+                float y = event.motion().y();
+                uiContext.handleMouseMove(x, y);
+            }
+
+            case SDL_EVENT_MOUSE_WHEEL -> {
+                float xoffset = event.wheel().x();
+                float yoffset = event.wheel().y();
+
+                // Get current mouse position
+                try (MemoryStack stack = MemoryStack.stackPush()) {
+                    FloatBuffer px = stack.mallocFloat(1);
+                    FloatBuffer py = stack.mallocFloat(1);
+                    SDL_GetMouseState(px, py);
+                    uiContext.handleMouseWheel(px.get(0), py.get(0), xoffset, yoffset);
+                }
+            }
+
+            case SDL_EVENT_WINDOW_RESIZED, SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED -> {
+                windowWidth = event.window().data1();
+                windowHeight = event.window().data2();
+                glViewport(0, 0, windowWidth, windowHeight);
+                uiContext.setWindowSize(windowWidth, windowHeight);
+            }
         }
-        uiContext.handleKeyEvent(key, scancode, mods, action == GLFW_PRESS || action == GLFW_REPEAT, '\0');
-    }
-    
-    private void charCallback(long window, int codepoint) {
-        uiContext.handleKeyEvent(0, 0, 0, true, (char) codepoint);
-    }
-    
-    private void mouseButtonCallback(long window, int button, int action, int mods) {
-        try (MemoryStack stack = MemoryStack.stackPush()) {
-            double[] xpos = new double[1];
-            double[] ypos = new double[1];
-            glfwGetCursorPos(window, xpos, ypos);
-            
-            MouseEvent.MouseButton btn = switch (button) {
-                case GLFW_MOUSE_BUTTON_LEFT -> MouseEvent.MouseButton.LEFT;
-                case GLFW_MOUSE_BUTTON_RIGHT -> MouseEvent.MouseButton.RIGHT;
-                case GLFW_MOUSE_BUTTON_MIDDLE -> MouseEvent.MouseButton.MIDDLE;
-                default -> MouseEvent.MouseButton.NONE;
-            };
-            
-            uiContext.handleMouseButton((float) xpos[0], (float) ypos[0], btn, action == GLFW_PRESS);
-        }
-    }
-    
-    private void cursorPosCallback(long window, double xpos, double ypos) {
-        uiContext.handleMouseMove((float) xpos, (float) ypos);
-    }
-    
-    private void scrollCallback(long window, double xoffset, double yoffset) {
-        try (MemoryStack stack = MemoryStack.stackPush()) {
-            double[] xpos = new double[1];
-            double[] ypos = new double[1];
-            glfwGetCursorPos(window, xpos, ypos);
-            uiContext.handleMouseWheel((float) xpos[0], (float) ypos[0], 
-                                      (float) xoffset, (float) yoffset);
-        }
-    }
-    
-    private void framebufferSizeCallback(long window, int width, int height) {
-        windowWidth = width;
-        windowHeight = height;
-        glViewport(0, 0, width, height);
-        uiContext.setWindowSize(width, height);
     }
 }

@@ -60,8 +60,9 @@ public class UICheckbox extends UIButton {
             float fontSize = getStyle().getFontSize();
             Color textColor = isEnabled() ? getStyle().getForegroundColor() : new Color(0.5f, 0.5f, 0.5f);
             renderer.drawText(getAbsoluteX() + getWidth() + 5, 
-                            getAbsoluteY() + (getHeight() + fontSize) / 2, 
-                            getLabel(), fontSize, textColor);
+                            getAbsoluteY() + getHeight() / 2,
+                            getLabel(), "default", fontSize, textColor,
+                            org.lwjgl.nanovg.NanoVG.NVG_ALIGN_LEFT | org.lwjgl.nanovg.NanoVG.NVG_ALIGN_MIDDLE);
         }
         
         markClean();
