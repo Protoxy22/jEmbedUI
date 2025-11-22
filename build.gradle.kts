@@ -42,7 +42,7 @@ dependencies {
 }
 
 application {
-    mainClass.set("net.jembedui.Main")
+    mainClass.set("com.jembedui.examples.ComprehensiveExample")
 }
 
 java {
@@ -53,7 +53,7 @@ java {
 
 tasks.withType<Jar> {
     manifest {
-        attributes["Main-Class"] = "net.jembedui.Main"
+        attributes["Main-Class"] = "com.jembedui.examples.ComprehensiveExample"
     }
 }
 
