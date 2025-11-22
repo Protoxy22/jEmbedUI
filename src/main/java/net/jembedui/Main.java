@@ -160,10 +160,10 @@ public class Main {
         // Triangle vertices: position (x, y) + color (r, g, b)
         // Top vertex (red), Bottom-left (green), Bottom-right (blue)
         float[] triangleData = {
-            // x     y      r    g    b
-             0.0f,  0.6f,  1.0f, 0.0f, 0.0f,  // Top vertex - Red
-            -0.6f, -0.6f,  0.0f, 1.0f, 0.0f,  // Bottom-left - Green
-             0.6f, -0.6f,  0.0f, 0.0f, 1.0f   // Bottom-right - Blue
+                // x     y      r    g    b
+                0.0f,  0.6f,  1.0f, 0.0f, 0.0f,  // Top vertex - Red
+                -0.6f, -0.6f,  0.0f, 1.0f, 0.0f,  // Bottom-left - Green
+                0.6f, -0.6f,  0.0f, 0.0f, 1.0f   // Bottom-right - Blue
         };
 
         int vbo;
